@@ -64,7 +64,7 @@ jobs:
           test -n "$APK"
           BUILD_TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n1)
           "$BUILD_TOOLS/apksigner" verify --print-certs "$APK" | tee /tmp/signature.txt
-          CERT=$(awk -F': ' '/SHA-256 digest/{print tolower($2); exit}' /tmp/signature.txt)
+          CERT=$(awk '/SHA-256 digest/{print tolower($NF); exit}' /tmp/signature.txt)
           echo "signer SHA-256: $CERT"
           test "$CERT" = "f92cc057dc82ed221e8b6845b3d1b064c7cb4576aa24e12c76fdf26d4af49d94"
           echo "APK=$APK" >> "$GITHUB_ENV"
