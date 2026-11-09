@@ -38,8 +38,25 @@ plugins {
     kotlin("plugin.compose") version "2.3.20"
 }
 
+val releaseKeystoreFile = providers.environmentVariable("RELEASE_KEYSTORE_FILE")
+val releaseKeystorePassword = providers.environmentVariable("RELEASE_KEYSTORE_PASSWORD")
+val releaseKeyAlias = providers.environmentVariable("RELEASE_KEY_ALIAS")
+val releaseKeyPassword = providers.environmentVariable("RELEASE_KEY_PASSWORD")
+
 android {
     compileSdk = 36
+
+    signingConfigs {
+        if (releaseKeystoreFile.isPresent && releaseKeystorePassword.isPresent
+            && releaseKeyAlias.isPresent && releaseKeyPassword.isPresent) {
+            create("release") {
+                storeFile = file(releaseKeystoreFile.get())
+                storePassword = releaseKeystorePassword.get()
+                this.keyAlias = releaseKeyAlias.get()
+                this.keyPassword = releaseKeyPassword.get()
+            }
+        }
+    }
 
     defaultConfig {
         applicationId = "com.orion.frostkeys"
@@ -68,6 +85,7 @@ android {
             isShrinkResources = false
             isDebuggable = false
             isJniDebuggable = false
+            signingConfigs.findByName("release")?.let { signingConfig = it }
         }
         create("nouserlib") { // same as release, but does not allow the user to provide a library
             isMinifyEnabled = true

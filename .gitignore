@@ -24,6 +24,9 @@ tools/*.txt
 *.patch
 *.diff
 *.sh
+*.jks
+*.keystore
+keystore.properties
 
 # Ignore root-level screenshots, log files, logcat dumps, and workspace
 /*.png
