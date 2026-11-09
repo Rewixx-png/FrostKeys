@@ -24,6 +24,7 @@ import android.view.inputmethod.EditorInfo;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import helium314.keyboard.compat.AppWorkarounds;
 import helium314.keyboard.event.Event;
 import helium314.keyboard.event.InputTransaction;
 import helium314.keyboard.keyboard.Keyboard;
@@ -1027,6 +1028,10 @@ public final class InputLogic {
         inputTransaction.setDidAffectContents();
         if (event.getCodePoint() == Constants.CODE_ENTER) {
             final EditorInfo editorInfo = getCurrentInputEditorInfo();
+            if (AppWorkarounds.INSTANCE.isTerminalEditor(editorInfo)) {
+                handleTerminalEnter(inputTransaction);
+                return;
+            }
             final int imeOptionsActionId = InputTypeUtils.getImeOptionsActionIdFromEditorInfo(editorInfo);
             if (InputTypeUtils.IME_ACTION_CUSTOM_LABEL == imeOptionsActionId) {
                 // Either we have an actionLabel and we should performEditorAction with
@@ -1049,6 +1054,24 @@ public final class InputLogic {
         } else {
             handleNonSpecialCharacterEvent(event, inputTransaction, handler);
         }
+    }
+
+    /**
+     * Send Enter to terminal editors as a real key event.
+     * <p>
+     * Terminal emulators such as Termius read Enter from {@link KeyEvent}, not from a
+     * newline committed as text. Commit any composing word first, but as typed: terminal
+     * commands must never be autocorrected.
+     */
+    private void handleTerminalEnter(final InputTransaction inputTransaction) {
+        if (mWordComposer.isComposingWord()) {
+            mConnection.finishComposingText();
+            resetComposingState(true /* alsoResetLastComposedWord */);
+        }
+        mSpaceState = SpaceState.NONE;
+        sendDownUpKeyEvent(KeyEvent.KEYCODE_ENTER);
+        inputTransaction.requireShiftUpdate(InputTransaction.SHIFT_UPDATE_NOW);
+        mSuggestionStripViewAccessor.setNeutralSuggestionStrip();
     }
 
     /**

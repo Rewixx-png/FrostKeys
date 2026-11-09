@@ -6,6 +6,25 @@ import android.view.inputmethod.EditorInfo
 import helium314.keyboard.latin.utils.InputTypeUtils
 
 object AppWorkarounds {
+    // Terminal emulators expect Enter as a KeyEvent. Some of them (e.g. Termius) ignore
+    // a newline committed via InputConnection.commitText(), so the command is never sent.
+    private val TERMINAL_PACKAGES = setOf(
+        "com.server.auditor.ssh.client", // Termius
+        "com.termux", // Termux
+        "com.termux.window", // Termux:Float
+        "com.sonelli.juicessh", // JuiceSSH
+        "org.connectbot", // ConnectBot
+        "jackpal.androidterm", // Android Terminal Emulator
+        "com.offsec.nhterm", // Kali NetHunter Terminal
+    )
+
+    fun isTerminalEditor(editorInfo: EditorInfo?): Boolean {
+        if (editorInfo == null) return false
+        // Custom terminal views commonly request TYPE_NULL to get raw key events.
+        if (editorInfo.inputType == InputType.TYPE_NULL) return true
+        return editorInfo.packageName?.let { TERMINAL_PACKAGES.contains(it) } == true
+    }
+
     fun adjustInputType(inputType: Int, packageName: String?): Int {
         return when (packageName) {
             "org.mozilla.fennec_fdroid", "org.mozilla.fenix", "org.mozilla.firefox_beta", "org.mozilla.focus",

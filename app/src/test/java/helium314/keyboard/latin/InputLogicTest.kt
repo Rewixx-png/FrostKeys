@@ -748,6 +748,33 @@ class InputLogicTest {
         assertEquals("/48", InputLogic.getInlineEmojiSearchString("2606:127.0.0.1::/48")) // do we want this?
     }
 
+    @Test fun `enter in Termius sends a key event`() {
+        reset()
+        currentPackageName = "com.server.auditor.ssh.client"
+        setText("ls")
+        input(Constants.CODE_ENTER)
+        assertEquals("ls\n", text)
+        assertEquals(1, sentKeyEvents.count { it.keyCode == KeyEvent.KEYCODE_ENTER && it.action == KeyEvent.ACTION_DOWN })
+        assertEquals(1, sentKeyEvents.count { it.keyCode == KeyEvent.KEYCODE_ENTER && it.action == KeyEvent.ACTION_UP })
+    }
+
+    @Test fun `enter in a raw input field sends a key event`() {
+        reset()
+        setInputType(InputType.TYPE_NULL)
+        input(Constants.CODE_ENTER)
+        assertEquals("\n", text)
+        assertEquals(1, sentKeyEvents.count { it.keyCode == KeyEvent.KEYCODE_ENTER && it.action == KeyEvent.ACTION_DOWN })
+    }
+
+    @Test fun `enter in a regular editor commits text without a key event`() {
+        reset()
+        currentImeOptions = EditorInfo.IME_ACTION_NONE
+        setText("")
+        input(Constants.CODE_ENTER)
+        assertEquals("\n", text)
+        assertEquals(0, sentKeyEvents.count { it.keyCode == KeyEvent.KEYCODE_ENTER })
+    }
+
     // ------- helper functions ---------
 
     // should be called before every test, so the same state is guaranteed
@@ -757,6 +784,9 @@ class InputLogicTest {
         text = ""
         batchEdit = 0
         currentInputType = InputType.TYPE_CLASS_TEXT
+        currentImeOptions = 0
+        currentPackageName = null
+        sentKeyEvents.clear()
         lastAddedWord = ""
 
         // reset settings
@@ -958,6 +988,9 @@ class InputLogicTest {
 }
 
 private var currentInputType = InputType.TYPE_CLASS_TEXT
+private var currentImeOptions = 0
+private var currentPackageName: String? = null
+private val sentKeyEvents = mutableListOf<KeyEvent>()
 private var currentScript = ScriptUtils.SCRIPT_LATIN
 private val messages = mutableListOf<Message>() // for latinIME / ShadowInputMethodService
 private val delayedMessages = mutableListOf<Message>() // for latinIME / ShadowInputMethodService
@@ -1089,6 +1122,7 @@ private val ic = object : InputConnection {
         return true
     }
     override fun sendKeyEvent(p0: KeyEvent): Boolean {
+        sentKeyEvents.add(p0)
         if (p0.action != KeyEvent.ACTION_DOWN) return true // only change the text on key down, like RichInputConnection does
         if (p0.keyCode == KeyEvent.KEYCODE_DEL) {
             if (selectionEnd == 0) return true // nothing to delete
@@ -1152,6 +1186,8 @@ class ShadowInputMethodService {
     @Implementation
     fun getCurrentInputEditorInfo() = EditorInfo().apply {
         inputType = currentInputType
+        imeOptions = currentImeOptions
+        packageName = currentPackageName ?: ""
         // anything else?
     }
     @Implementation
